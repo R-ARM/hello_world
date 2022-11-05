@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -x
 
 if [[ -z "$PROGDIR" ]]; then
 	PROGDIR="$(pwd)"
@@ -91,8 +92,8 @@ if [[ "$EXECUTABLE_AMD64" ]]; then
 	copy_executable "$EXECUTABLE_AMD64" amd64
 fi
 
-if [[ "$EXECUTABLE_MIPSEL" ]]; then
-	copy_executable "$EXECUTABLE_MIPSEL" mipsel
+if [[ "$EXECUTABLE_MIPS64" ]]; then
+	copy_executable "$EXECUTABLE_MIPS64" mips64
 fi
 
 if [[ "$EXECUTABLE_ARM64" ]]; then
