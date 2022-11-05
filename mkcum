@@ -1,0 +1,108 @@
+#!/bin/bash
+set -e
+
+if [[ -z "$PROGDIR" ]]; then
+	PROGDIR="$(pwd)"
+fi
+
+if [[ -z "$DESTDIR" ]]; then
+	DESTDIR="$PROGDIR"
+fi
+
+SQFSDIR="$(mktemp -d /tmp/cum.XXXXXX)"
+function rmrf_sqfs {
+	rm -rf "$SQFSDIR"
+}
+trap rmrf_sqfs EXIT
+
+if [ ! -e "$PROGDIR/cum.conf" ]; then
+	echo "$PROGDIR/cum.conf is missing!"
+	exit 1
+fi
+
+source "$PROGDIR/cum.conf"
+
+if [[ -z "$PKG" ]]; then
+	echo "PKG field is missing"
+	exit 1
+fi
+
+if [[ -z "$NAME" ]]; then
+	echo "NAME field is missing"
+	exit 1
+fi
+
+if [[ -z "$VERSION" ]]; then
+	echo "VERSION field is missing"
+	exit 1
+fi
+
+if [[ -z "$AUTHOR" ]]; then
+	echo "AUTHOR field is missing"
+	exit 1
+fi
+
+if [[ -z "$DESCRIPTION" ]]; then
+	echo "DESCRIPTION field is missing"
+	exit 1
+fi
+
+if [ -z "$EXECUTABLE_AMD64" -a -z "$EXECUTABLE_MIPSEL" -a -z "$EXECUTABLE_ARM64" ]; then
+	echo "EXECUTABLE_ARCH fields are missing"
+	echo "Available fields: EXECUTABLE_AMD64, EXECUTABLE_MIPSEL, EXECUTABLE_ARM64"
+	exit 1
+fi
+
+if [[ ! -e "$PROGDIR/$EXECUTABLE" ]]; then
+	echo "$EXECUTABLE file doesn't exist"
+	exit 1
+fi
+
+if [[ -z "$TYPE" ]]; then
+	echo "TYPE field is missing"
+	exit 1
+fi
+
+if echo "$TYPE" | grep -qvE '(program|emulator|service)'; then
+	echo "TYPE field has invalid value"
+	echo "Expected one of: emulator, program, service"
+	exit 1
+fi
+
+if [[ "$(magick identify -format '%m %w %h' $PROGDIR/icon.png)" != "PNG 512 512" ]]; then
+	echo "Icon has invalid attributes"
+	echo "Expected 512x512 PNG icon"
+fi
+
+function copy_executable() {
+	FILE="$1"
+	ARCH="$2"
+
+	if env LANG=C file "$FILE" | grep -q "dynamically linked"; then
+		echo "$FILE isn't statically linked!"
+		exit 1
+	fi
+
+	cp "$FILE" "$SQFSDIR/run.$ARCH"
+	chmod a+x "$SQFSDIR/run.$ARCH"
+}
+
+if [[ "$EXECUTABLE_AMD64" ]]; then
+	copy_executable "$EXECUTABLE_AMD64" amd64
+fi
+
+if [[ "$EXECUTABLE_MIPSEL" ]]; then
+	copy_executable "$EXECUTABLE_MIPSEL" mipsel
+fi
+
+if [[ "$EXECUTABLE_ARM64" ]]; then
+	copy_executable "$EXECUTABLE_ARM64" arm64
+fi
+
+cp "$PROGDIR/cum.conf" "$SQFSDIR/cum.conf"
+cp "$PROGDIR/icon.png" "$SQFSDIR/icon.png"
+
+rm "$PROGDIR/$PKG.cum"
+mksquashfs "$SQFSDIR" "$PROGDIR/$PKG.cum" >/dev/null
+
+echo "Created $DESTDIR/$PKG.cum"

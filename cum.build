@@ -1,0 +1,14 @@
+#!/bin/bash
+set -e
+
+cargo build --release --target aarch64-unknown-linux-musl \
+	--config 'target.aarch64-unknown-linux-musl.linker="aarch64-linux-gnu-gcc"' \
+	--config build.rustflags="'-C strip=symbols -C link-arg=-lgcc'"
+
+cargo build --release --target x86_64-unknown-linux-musl \
+	--config 'target.x86_64-unknown-linux-musl.linker="x86_64-pc-linux-gnu-gcc"' \
+	--config build.rustflags="'-C strip=symbols -C link-arg=-lgcc'"
+
+cargo build --release --target mips64el-unknown-linux-muslabi64 \
+	--config 'target.mips64el-unknown-linux-muslabi64.linker="mips64el-linux-gnu-gcc"' \
+	--config build.rustflags="'-C strip=symbols -C link-arg=-lgcc'"
